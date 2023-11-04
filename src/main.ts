@@ -17,14 +17,21 @@ import {
   InstanceServiceService,
 } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service';
 import * as yaml from 'js-yaml';
-import {Config, GithubRepo} from './config';
+import {ActionConfig, Config, GithubRepo} from './config';
 import {getRegistrationToken, removeRunner, waitForRunnerRegistered} from './gh';
 import {fromServiceAccountJsonFile} from './service-account-json';
+import {StartOutput} from './output';
 
 let config: Config;
+const isPost = !!core.getState('isPost');
 
 try {
-  config = new Config();
+  if (isPost) {
+    const postInput: ActionConfig = JSON.parse(core.getState('vmConfig'));
+    config = new Config(postInput);
+  } else {
+    config = new Config();
+  }
 } catch (error) {
   const err = error as Error;
   core.error(err);
@@ -187,13 +194,18 @@ async function destroyVm(
 async function start(
   session: Session,
   instanceService: WrappedServiceClientType<typeof InstanceServiceService>,
-): Promise<void> {
+): Promise<StartOutput> {
   const label = config.generateUniqueLabel();
   const githubRegistrationToken = await getRegistrationToken(config);
   const instanceId = await createVm(session, instanceService, github.context.repo, githubRegistrationToken, label);
   core.setOutput('label', label);
   core.setOutput('instance-id', instanceId);
   await waitForRunnerRegistered(config, label);
+
+  return {
+    label,
+    instanceId,
+  };
 }
 
 async function stop(
@@ -208,9 +220,11 @@ async function run(): Promise<void> {
   core.setCommandEcho(true);
   try {
     core.info(`start`);
-    const ycSaJsonCredentials = core.getInput('yc-sa-json-credentials', {
-      required: true,
-    });
+    const ycSaJsonCredentials = isPost
+      ? core.getState('ycSaJsonCredentials')
+      : core.getInput('yc-sa-json-credentials', {
+          required: true,
+        });
 
     core.info(`Folder ID: ${config.input.folderId}`);
 
@@ -222,7 +236,20 @@ async function run(): Promise<void> {
 
     switch (config.input.mode) {
       case 'start': {
-        await start(session, instanceService);
+        const startOutput: StartOutput = await start(session, instanceService);
+
+        // Save data to state for post job
+        if (config.input.needAutoTermination) {
+          const postConfig: ActionConfig = JSON.parse(JSON.stringify(config.input));
+          postConfig.label = startOutput.label;
+          postConfig.instanceId = startOutput.instanceId;
+          postConfig.mode = 'stop';
+
+          core.saveState('ycSaJsonCredentials', ycSaJsonCredentials);
+          core.saveState('vmConfig', JSON.stringify(postConfig));
+          core.saveState('isPost', true);
+        }
+
         break;
       }
       case 'stop': {
