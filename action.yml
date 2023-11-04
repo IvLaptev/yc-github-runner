@@ -7,7 +7,13 @@ inputs:
       Specify here which mode you want to use:
         - 'start' - to start a new runner;
         - 'stop' - to stop the previously created runner.
-    required: true
+    default: 'start'
+    required: false
+  auto-terminate:
+    description: >-
+      If VM must be terminated automatically after workflow finished
+    default: true
+    required: false
   github-token:
     description: >-
       GitHub Personal Access Token with the 'repo' scope assigned.

@@ -11,6 +11,7 @@ export interface ResourcesSpec {
 export interface ActionConfig {
   imageId: string;
   mode: string;
+  needAutoTermination?: boolean;
   githubToken: string;
   runnerHomeDir: string;
   label: string;
@@ -41,9 +42,11 @@ export interface GithubRepo {
 export class Config {
   input: ActionConfig;
   githubContext: GithubRepo;
+  isPost: boolean;
 
   constructor(input?: ActionConfig) {
     this.input = input ?? parseVmInputs();
+    this.isPost = !!input
 
     // the values of github.context.repo.owner and github.context.repo.repo are taken from
     // the environment variable GITHUB_REPOSITORY specified in "owner/repo" format and
@@ -56,10 +59,6 @@ export class Config {
     //
     // validate input
     //
-
-    if (!this.input.mode) {
-      throw new Error(`The 'mode' input is not specified`);
-    }
 
     if (!this.input.githubToken) {
       throw new Error(`The 'github-token' input is not specified`);
@@ -77,6 +76,10 @@ export class Config {
       if (!this.input.label || !this.input.instanceId) {
         throw new Error(`Not all the required inputs are provided for the 'stop' mode`);
       }
+    } else if (this.isPost) {
+      if (!this.input.label || !this.input.instanceId) {
+        throw new Error(`Not all the required inputs are provided for the auto-termination`);
+      }
     } else {
       throw new Error('Wrong mode. Allowed values: start, stop.');
     }
@@ -93,6 +96,7 @@ function parseVmInputs(): ActionConfig {
   const folderId: string = core.getInput('folder-id');
 
   const mode = core.getInput('mode');
+  const needAutoTermination: boolean = core.getInput('auto-terminate') === 'true';
   const githubToken = core.getInput('github-token');
   const runnerHomeDir = core.getInput('runner-home-dir');
   const label = core.getInput('label');
@@ -129,6 +133,7 @@ function parseVmInputs(): ActionConfig {
     platformId,
     folderId,
     mode,
+    needAutoTermination,
     githubToken,
     runnerHomeDir,
     label,
