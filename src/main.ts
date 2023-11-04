@@ -1,7 +1,5 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import * as os from 'os'
-import * as fs from 'fs'
 import {
   decodeMessage,
   serviceClients,
@@ -9,7 +7,7 @@ import {
   waitForOperation,
   WrappedServiceClientType,
 } from '@yandex-cloud/nodejs-sdk';
-import { Instance, IpVersion } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance';
+import {Instance, IpVersion} from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance';
 import {
   AttachedDiskSpec,
   AttachedDiskSpec_Mode,
@@ -19,13 +17,13 @@ import {
   InstanceServiceService,
 } from '@yandex-cloud/nodejs-sdk/dist/generated/yandex/cloud/compute/v1/instance_service';
 import * as yaml from 'js-yaml';
-import { ActionConfig, Config, GithubRepo } from './config';
-import { getRegistrationToken, removeRunner, waitForRunnerRegistered } from './gh';
-import { fromServiceAccountJsonFile } from './service-account-json';
-import { StartOutput } from './output';
+import {ActionConfig, Config, GithubRepo} from './config';
+import {getRegistrationToken, removeRunner, waitForRunnerRegistered} from './gh';
+import {fromServiceAccountJsonFile} from './service-account-json';
+import {StartOutput} from './output';
 
 let config: Config;
-let isPost: boolean = !!core.getState('isPost');
+const isPost = !!core.getState('isPost');
 
 try {
   if (isPost) {
@@ -50,7 +48,7 @@ export function buildUserDataScript(params: {
   user: string;
   sshPublicKey: string;
 }): string[] {
-  const { githubRegistrationToken, label, runnerHomeDir, repo, owner, user, sshPublicKey } = params;
+  const {githubRegistrationToken, label, runnerHomeDir, repo, owner, user, sshPublicKey} = params;
   let script: string[];
   /*eslint-disable max-len*/
   if (runnerHomeDir) {
@@ -206,8 +204,8 @@ async function start(
 
   return {
     label,
-    instanceId
-  }
+    instanceId,
+  };
 }
 
 async function stop(
@@ -218,30 +216,23 @@ async function stop(
   await removeRunner(config);
 }
 
-function createClient(ycSaJsonCredentials: string) {
-  core.info(`Folder ID: ${config.input.folderId}`);
-
-  const serviceAccountJson = fromServiceAccountJsonFile(JSON.parse(ycSaJsonCredentials));
-  core.info('Parsed Service account JSON');
-
-  const session = new Session({ serviceAccountJson });
-  const instanceService = session.client(serviceClients.InstanceServiceClient);
-
-  return {
-    session,
-    instanceService
-  }
-}
-
 async function run(): Promise<void> {
   core.setCommandEcho(true);
   try {
     core.info(`start`);
-    const ycSaJsonCredentials = isPost ? core.getState('ycSaJsonCredentials') : core.getInput('yc-sa-json-credentials', {
-      required: true,
-    });
+    const ycSaJsonCredentials = isPost
+      ? core.getState('ycSaJsonCredentials')
+      : core.getInput('yc-sa-json-credentials', {
+          required: true,
+        });
 
-    const { session, instanceService } = createClient(ycSaJsonCredentials);
+    core.info(`Folder ID: ${config.input.folderId}`);
+
+    const serviceAccountJson = fromServiceAccountJsonFile(JSON.parse(ycSaJsonCredentials));
+    core.info('Parsed Service account JSON');
+
+    const session = new Session({serviceAccountJson});
+    const instanceService = session.client(serviceClients.InstanceServiceClient);
 
     switch (config.input.mode) {
       case 'start': {

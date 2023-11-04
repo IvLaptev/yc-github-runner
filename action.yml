@@ -113,3 +113,4 @@ branding:
 runs:
   using: 'node16'
   main: 'dist/index.js'
+  post: 'dist/index.js'

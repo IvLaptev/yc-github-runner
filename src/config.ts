@@ -46,7 +46,7 @@ export class Config {
 
   constructor(input?: ActionConfig) {
     this.input = input ?? parseVmInputs();
-    this.isPost = !!input
+    this.isPost = !!input;
 
     // the values of github.context.repo.owner and github.context.repo.repo are taken from
     // the environment variable GITHUB_REPOSITORY specified in "owner/repo" format and
